@@ -1,0 +1,26 @@
+﻿@model List<UpdateSispjus>
+<table>
+    <thead>
+        <tr>
+            <th>Id</th>
+            <td>CpfCnpj</td>
+            <th>DataAutuacaoCalculadora </th>
+            <th>AnoVencimento </th>
+            <th>ValorBruto </th>
+            <th>ValorJurosCalculadora </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Id</td>
+                <td>@item.CpfCnpj</td>
+                <td>@item.DataAutuacaoCalculadora</td>
+                <td>@item.AnoVencimento</td>
+                <td>@item.ValorBruto</td>
+                <td>@item.ValorJurosCalculadora</td>
+            </tr>
+        }
+    </tbody>
+</table>

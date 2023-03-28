@@ -1,7 +1,8 @@
 using Microsoft.Data.SqlClient;
-using Microsoft.EntityFrameworkCore.Query.SqlExpressions;
-
+using System.Data.OleDb;
 using System.Data;
+
+using Microsoft.Extensions.DependencyInjection;
 
 namespace _9319_DistribuicaoLeads
 {
@@ -15,7 +16,12 @@ namespace _9319_DistribuicaoLeads
             builder.Services.AddHttpClient();
 
             var connectionString = builder.Configuration.GetConnectionString("SqlConnectionString");
-            builder.Services.AddScoped<IDbConnection>(C =>  new SqlConnection(connectionString));
+            var excelConnectionString = builder.Configuration.GetConnectionString("ExcelConnectionString");
+
+            builder.Services.AddScoped<IDbConnection>(c => new SqlConnection(connectionString));
+            builder.Services.AddScoped<IDbConnection>(c => new OleDbConnection(excelConnectionString));
+
+
 
             // Add services to the container.
             builder.Services.AddControllersWithViews();

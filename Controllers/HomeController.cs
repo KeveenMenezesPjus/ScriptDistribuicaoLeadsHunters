@@ -1,13 +1,24 @@
 ﻿using System.Data;
 using System.Diagnostics;
+using System.Globalization;
 using System.Text;
 using System.Text.Json;
 
 using _9319_DistribuicaoLeads.Models;
 
+using CsvHelper;
+using CsvHelper.Configuration;
+
 using Dapper;
 
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Hosting;
+
+using NPOI.SS.Formula.Functions;
+
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 /*V1*/
 namespace _9319_DistribuicaoLeads.Controllers 
 { 
@@ -15,21 +26,28 @@ namespace _9319_DistribuicaoLeads.Controllers
 	{
 		private readonly ILogger<HomeController> _logger;
 
-		private readonly IDbConnection _dbConnection;
+        private readonly IDbConnection _sqlConnection;
+        private readonly IDbConnection _excelConnection;
 
-		private readonly HttpClient _httpClient;
+        private readonly HttpClient _httpClient;
 
-		public HomeController(ILogger<HomeController> logger, IDbConnection dbConnection, HttpClient httpClient)
-		{
+		public HomeController(ILogger<HomeController> logger, IDbConnection excelConnection, IDbConnection sqlConnection, HttpClient httpClient)
+        {   
 			_logger = logger;
-			_dbConnection = dbConnection;
-			_httpClient = httpClient;
+            _sqlConnection = sqlConnection;
+            _excelConnection = excelConnection;
+            _httpClient = httpClient;
+
+        }
+		public IActionResult Index()
+		{
+			return View();
 		}
-		public async Task<IActionResult> Index()
+		public async Task<IActionResult> Privacy()
 		{
 
-			var consulta =
-			@"
+            var consulta =
+            @"
 			Use us_crm
             DECLARE @identificadorUsuarioExterno VARCHAR(10);
             DECLARE @CountInten INT; 
@@ -65,28 +83,46 @@ namespace _9319_DistribuicaoLeads.Controllers
             END
 		            select * from @tab";
 
-			var results = await _dbConnection.QueryAsync<AtribuirLeadDto>(consulta, commandTimeout: 560);
+            var results = await _sqlConnection.QueryAsync<AtribuirLeadDto>(consulta, commandTimeout: 560);
 
-			foreach (var result in results)
-			{
-				var ItemJson = new StringContent(JsonSerializer.Serialize(result), Encoding.UTF8, "application/json");
 
-				using var httpResponseMessage = await _httpClient.PutAsync("https://integracaocrm.api.qa.pjus.com.br/api/Leads/atribuir-lead", ItemJson);
+            foreach (var result in results)
+            {
+                var ItemJson = new StringContent(JsonSerializer.Serialize(result), Encoding.UTF8, "application/json");
 
-				if (!httpResponseMessage.IsSuccessStatusCode)
-				{
-					break;
-				}
-			}
+                using var httpResponseMessage = await _httpClient.PutAsync("https://integracaocrm.api.qa.pjus.com.br/api/Leads/atribuir-lead", ItemJson);
 
-			return View();
-		}
-		public IActionResult Privacy()
-		{
-			return View();
+                if (!httpResponseMessage.IsSuccessStatusCode)
+                {
+                    break;
+                }
+            }
+
+            return View();
 		}
 
-		[ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
+        public ActionResult AtualizacaoProcessosFederais()
+        {
+            var csvPath = @"C:\Users\keveen.menezes\OneDrive - PJUS INVESTIMENTOS EM DIREITOS CREDITORIOS LTDA\Área de Trabalho\updateSisPjus2.csv";
+            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                Delimiter = ";",
+                HasHeaderRecord = false,
+                HeaderValidated = null,
+                MissingFieldFound = null
+            };
+
+            using (var reader = new StreamReader(csvPath))
+            using (var csv = new CsvReader(reader, csvConfig))
+            {
+                var records = csv.GetRecords<UpdateSispjus>().ToList();
+                return View("CsvData", records);
+            }
+
+        }
+
+
+        [ResponseCache(Duration = 0, Location = ResponseCacheLocation.None, NoStore = true)]
 		public IActionResult Error()
 		{
 			return View(new ErrorViewModel { RequestId = Activity.Current?.Id ?? HttpContext.TraceIdentifier });
